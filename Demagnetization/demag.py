@@ -58,7 +58,6 @@ def demagCurrent(noField):
         ps.disable_output()
         time.sleep(0.5)     # delay for inductance before field reading
         presentField = getField()
-        # TODO: refactor presentField - noField and store as var
         if(abs(presentField - noField) > 0.004*noField and
            signum(presentField - noField) == original_sign) is False:
             break
