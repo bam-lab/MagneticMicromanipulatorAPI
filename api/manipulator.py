@@ -23,8 +23,12 @@ class Manipulator:
 
     def __init__(self, comm_port: str):
 
-        self.serial_conn = serial.Serial(comm_port, baudrate=9600, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
-                                         stopbits=serial.STOPBITS_ONE, timeout=10, write_timeout=10)
+        self.serial_conn = serial.Serial(comm_port, baudrate=9600,
+                                         bytesize=serial.EIGHTBITS,
+                                         parity=serial.PARITY_NONE,
+                                         stopbits=serial.STOPBITS_ONE,
+                                         timeout=10,
+                                         write_timeout=10)
 
     def __del__(self):
         self.serial_conn.close()
@@ -32,18 +36,23 @@ class Manipulator:
     def get_current_position(self):
         """
         Get the micromanipulator position
-        :return: A tuple of floats (x,y,z) of the position in um accurate to 0.04 um
+        :return: A tuple of floats (x,y,z) of the position in um accurate
+        to 0.04 um
         """
         self.serial_conn.write(b'c\r')
 
         # returns 'xxxxyyyyzzzzCR' in uSteps
-        position_bytes = self.serial_conn.read(13)
+        pos_bytes = self.serial_conn.read(13)
 
-        x = int.from_bytes(position_bytes[0:4], byteorder='little', signed=True)
-        y = int.from_bytes(position_bytes[4:8], byteorder='little', signed=True)
-        z = int.from_bytes(position_bytes[8:12], byteorder='little', signed=True)
+        x = int.from_bytes(pos_bytes[0:4], byteorder='little', signed=True)
+        y = int.from_bytes(pos_bytes[4:8], byteorder='little', signed=True)
+        z = int.from_bytes(pos_bytes[8:12], byteorder='little', signed=True)
 
-        return float(x / _USTEPS_PER_UM_), float(y / _USTEPS_PER_UM_), float(z / _USTEPS_PER_UM_)
+        x_pos = float(x / _USTEPS_PER_UM_)
+        y_pos = float(y / _USTEPS_PER_UM_)
+        z_pos = float(z / _USTEPS_PER_UM_)
+
+        return x_pos, y_pos, z_pos
 
     def go_to_position(self, x: _Num, y: _Num, z: _Num):
         """
@@ -54,18 +63,26 @@ class Manipulator:
         :param z: Z coordinate in um
         """
 
-        x_bytes = int(x * _USTEPS_PER_UM_).to_bytes(4, byteorder='little', signed=True)
-        y_bytes = int(y * _USTEPS_PER_UM_).to_bytes(4, byteorder='little', signed=True)
-        z_bytes = int(z * _USTEPS_PER_UM_).to_bytes(4, byteorder='little', signed=True)
+        x_bytes = int(x * _USTEPS_PER_UM_).to_bytes(4,
+                                                    byteorder='little',
+                                                    signed=True)
+        y_bytes = int(y * _USTEPS_PER_UM_).to_bytes(4,
+                                                    byteorder='little',
+                                                    signed=True)
+        z_bytes = int(z * _USTEPS_PER_UM_).to_bytes(4,
+                                                    byteorder='little',
+                                                    signed=True)
 
         self.serial_conn.write(b'm' + x_bytes + y_bytes + z_bytes + b'\r')
 
         # Wait for response
         self.serial_conn.read()
 
-    def send_and_execute_moves(self, moves: Sequence[Tuple[_Num, _Num, _Num]], program_num: int = 1):
+    def send_and_execute_moves(self, moves: Sequence[Tuple[_Num, _Num, _Num]],
+                               program_num: int = 1):
         """
-        Sends and executes a sequence of moves on the manipulator. (Max 99 moves at a time)
+        Sends and executes a sequence of moves on the manipulator.
+        (Max 99 moves at a time)
 
         :param moves: List of (x, y, z) coordinates in um
         :param program_num: Optional program number between 1 and 10
@@ -78,14 +95,19 @@ class Manipulator:
             raise ValueError('Program number must be between 1 and 10')
 
         # Header information:
-        # Command is 'd' followed by the program number followed by the number of moves
-        byte_str = b'd' + program_num.to_bytes(1, byteorder='little', signed=False) \
-                   + len(moves).to_bytes(1, byteorder='little', signed=False)
+        # Command is 'd' followed by the program number followed by the
+        # number of moves
+        mv_len_bytes = len(moves).to_bytes(1, byteorder='little', signed=False)
+        byte_str = b'd' + program_num.to_bytes(1, byteorder='little',
+                                               signed=False) + mv_len_bytes
 
-        for move in moves:
-            x_bytes = int(move[0] * _USTEPS_PER_UM_).to_bytes(4, byteorder='little', signed=True)
-            y_bytes = int(move[1] * _USTEPS_PER_UM_).to_bytes(4, byteorder='little', signed=True)
-            z_bytes = int(move[2] * _USTEPS_PER_UM_).to_bytes(4, byteorder='little', signed=True)
+        for mv in moves:
+            x_int = int(mv[0] * _USTEPS_PER_UM_)
+            x_bytes = x_int.to_bytes(4, byteorder='little', signed=True)
+            y_int = int(mv[1] * _USTEPS_PER_UM_)
+            y_bytes = y_int.to_bytes(4, byteorder='little', signed=True)
+            z_int = int(mv[2] * _USTEPS_PER_UM_)
+            z_bytes = z_int.to_bytes(4, byteorder='little', signed=True)
             byte_str += x_bytes + y_bytes + z_bytes
 
         byte_str += b'\r'
@@ -97,7 +119,9 @@ class Manipulator:
         self.serial_conn.read()
 
         # Execute program (Command 'k')
-        self.serial_conn.write(b'k' + program_num.to_bytes(1, byteorder='little', signed=False) + b'\r')
+        self.serial_conn.write(b'k' +
+                               program_num.to_bytes(1, byteorder='little',
+                                                    signed=False) + b'\r')
 
         # Wait for completion
         self.serial_conn.read()
@@ -106,12 +130,15 @@ class Manipulator:
         """
         Set the velocity of the manipulator. Two resolutions are available:
 
-        Resolution.HIGH allows for increments of 0.4um/second with max velocity of 1310 um/s
+        Resolution.HIGH allows for increments of 0.4um/second with max
+        velocity of 1310 um/s
 
-        Resolution.LOW allows for increments of 2um/second with max velocity of 6500 um/s(recommended maximum 3000 um/s)
+        Resolution.LOW allows for increments of 2um/second with max
+        velocity of 6500 um/s(recommended maximum 3000 um/s)
 
         :param velocity: velocity value in um/second
-        :param resolution: Resolution either Resolution.HIGH (0.4um/second) or Resolution.LOW (2um/second)
+        :param resolution: Resolution either Resolution.HIGH
+        (0.4um/second) or Resolution.LOW (2um/second)
         """
 
         if velocity <= 0:
@@ -197,13 +224,112 @@ class Manipulator:
         flag_byte = status_bytes[0]
         flag_2_byte = status_bytes[15]
 
+        # Define ROE_DIR
+        if (flag_byte & (1 << 4)) == (1 << 4):
+            roe_dir = 'Negative'
+        else:
+            roe_dir = 'Positive'
+
+        # Define REL_ABS_F
+        if (flag_byte & (1 << 5)) == (1 << 5):
+            rel_abs_f = 'Absolute'
+        else:
+            rel_abs_f = 'Relative'
+
+        # Define MODE_F
+        if (flag_byte & (1 << 6)) == (1 << 6):
+            mode_f = 'Continuous'
+        else:
+            mode_f = 'Pulse'
+
+        # Define STORE_F
+        if (flag_byte & (1 << 7)) == (1 << 7):
+            store_f = 'Stored'
+        else:
+            store_f = 'Erased'
+
+        # Define LOOP_MODE
+        if (flag_2_byte & (1 << 0)) == (1 << 0):
+            loop_mode = 'Loop'
+        else:
+            loop_mode = 'Execute Once'
+
+        # Define LEARN_MODE
+        if (flag_2_byte & (1 << 1)) == (1 << 1):
+            learn_mode = 'Learning'
+        else:
+            learn_mode = 'Not Learning'
+
+        # Define STEP_MODE
+        if (flag_2_byte & (1 << 2)) == (1 << 2):
+            step_mode = '50 usteps/step'
+        else:
+            step_mode = '10 usteps/step'
+
+        # Define JOYSTICK_SIDE
+        if (flag_2_byte & (1 << 3)) == (1 << 3):
+            joystick_side = 'Enabled'
+        else:
+            joystick_side = 'Disabled'
+
+        # Define ENABLE_JOYSTICK
+        if (flag_2_byte & (1 << 4)) == (1 << 4):
+            enable_joystick = 'Enabled'
+        else:
+            enable_joystick = 'Keypad'
+        # Define ENABLE_ROE_SWITCH
+        if (flag_2_byte & (1 << 5)) == (1 << 5):
+            enable_roe_switch = 'Enabled'
+        else:
+            enable_roe_switch = 'Disabled'
+
+        # Define SWITCHES_4_AND_5
+        if (flag_2_byte & (1 << 6)) == (1 << 6):
+            switches_4_and_5 = 'Enabled'
+        else:
+            switches_4_and_5 = 'Disabled'
+
+        # Define REVERSE_IT
+        if (flag_2_byte & (1 << 7)) == (1 << 7):
+            reverse_it = 'Reversed'
+        else:
+            reverse_it = 'Normal Sequence'
+
+        # Define int to feed to JUMPSPD
+        jumpspeed = int.from_bytes(status_bytes[16:18], byteorder='little')
+
+        # Define int to feed to HIGHSPD
+        highspeed = int.from_bytes(status_bytes[18:20], byteorder='little')
+
+        # Define int to feed to DEAD
+        dead = int.from_bytes(status_bytes[20:22], byteorder='little')
+
+        # Define int to feed to WATCHDOG
+        watchdog = int.from_bytes(status_bytes[22:24], byteorder='little')
+
+        # Define int to feed to STEP_DIV
+        step_div = int.from_bytes(status_bytes[24:26], byteorder='little')
+
+        # Define int to feed to STEP_MUL
+        step_mul = int.from_bytes(status_bytes[26:28], byteorder='little')
+
+        # Define x speed resolution
+        xspd_res_byte = int.from_bytes(status_bytes[28:30], byteorder='little')
+        if (xspd_res_byte & (1 << 15)) == (1 << 15):
+            xspeed_res = 'High Resolution'
+        else:
+            xspeed_res = 'Low Resolution'
+
+        # Define x speed
+        xspeed_bytes = int.from_bytes(status_bytes[28:30], byteorder='little')
+        xspeed = xspeed_bytes & ~(1 << 15)
         status = {
             'FLAGS': {
                 'SETUP': flag_byte & 0b00001111,
-                'ROE_DIR': 'Negative' if (flag_byte & (1 << 4)) == (1 << 4) else 'Positive',
-                'REL_ABS_F': 'Absolute' if (flag_byte & (1 << 5)) == (1 << 5) else 'Relative',
-                'MODE_F': 'Continuous' if (flag_byte & (1 << 6)) == (1 << 6) else 'Pulse',
-                'STORE_F': 'Stored' if (flag_byte & (1 << 7)) == (1 << 7) else 'Erased'
+                'ROE_DIR': roe_dir,
+                'REL_ABS_F': rel_abs_f,
+                'MODE_F': mode_f,
+                'STORE_F': store_f
             },
             'UDIRX': status_bytes[1],
             'UDIRY': status_bytes[2],
@@ -215,25 +341,25 @@ class Manipulator:
             'USPEED': int.from_bytes(status_bytes[12:14], byteorder='little'),
             'INDEVICE': status_bytes[14],
             'FLAGS_2': {
-                'LOOP_MODE': 'Loop' if (flag_2_byte & (1 << 0)) == (1 << 0) else 'Execute Once',
-                'LEARN_MODE': 'Learning' if (flag_2_byte & (1 << 1)) == (1 << 1) else 'Not Learning',
-                'STEP_MODE': '50 usteps/step' if (flag_2_byte & (1 << 2)) == (1 << 2) else '10 usteps/step',
-                'JOYSTICK_SIDE': 'Enabled' if (flag_2_byte & (1 << 3)) == (1 << 3) else 'Disabled',  # SW2_MODE
-                'ENABLE_JOYSTICK': 'Enabled' if (flag_2_byte & (1 << 4)) == (1 << 4) else 'Keypad',  # SW1_MODE
-                'ENABLE_ROE_SWITCH': 'Enabled' if (flag_2_byte & (1 << 5)) == (1 << 5) else 'Disabled',  # SW3_MODE
-                '4_AND_5_SWITCHES': 'Enabled' if (flag_2_byte & (1 << 6)) == (1 << 6) else 'Disabled',  # SW4_MODE
-                'REVERSE_IT': 'Reversed' if (flag_2_byte & (1 << 7)) == (1 << 7) else 'Normal Sequence'
+                'LOOP_MODE': loop_mode,
+                'LEARN_MODE': learn_mode,
+                'STEP_MODE': step_mode,
+                'JOYSTICK_SIDE': joystick_side,  # SW2_MODE
+                'ENABLE_JOYSTICK': enable_joystick,  # SW1_MODE
+                'ENABLE_ROE_SWITCH': enable_roe_switch,  # SW3_MODE
+                '4_AND_5_SWITCHES': switches_4_and_5,  # SW4_MODE
+                'REVERSE_IT': reverse_it
             },
-            'JUMPSPD': int.from_bytes(status_bytes[16:18], byteorder='little'),
-            'HIGHSPD': int.from_bytes(status_bytes[18:20], byteorder='little'),
-            'DEAD': int.from_bytes(status_bytes[20:22], byteorder='little'),
-            'WATCH_DOG': int.from_bytes(status_bytes[22:24], byteorder='little'),
-            'STEP_DIV': int.from_bytes(status_bytes[24:26], byteorder='little'),
-            'STEP_MUL': int.from_bytes(status_bytes[26:28], byteorder='little'),
-            'XSPEED_RES': 'High Resolution' if (int.from_bytes(status_bytes[28:30], byteorder='little') & (1 << 15)) == (
-                    1 << 15) else 'Low Resolution',
-            'XSPEED': int.from_bytes(status_bytes[28:30], byteorder='little') & ~(1 << 15),
-            'VERSION': status_bytes[30:32]  # TODO Bytes 31 and 32 Could be integer or Binary Coded decimal
+            'JUMPSPD': jumpspeed,
+            'HIGHSPD': highspeed,
+            'DEAD': dead,
+            'WATCHDOG': watchdog,
+            'STEP_DIV': step_div,
+            'STEP_MUL': step_mul,
+            'XSPEED_RES': xspeed_res,
+            'XSPEED': xspeed,
+            # TODO Bytes 31 and 32 Could be integer or Binary Coded decimal
+            'VERSION': status_bytes[30:32]
         }
 
         # Convert the XSPEED back to an actual velocity value

@@ -1,7 +1,6 @@
-import statistics
+import statistics as stats
 import time
 
-import RPi.GPIO as GPIO
 import Adafruit_ADS1x15
 
 from api.power_supply import PowerSupply
@@ -16,7 +15,8 @@ class Demagnetizer:
     GAIN = 2
     TRIALS = 10
 
-    def __init__(self, ps: PowerSupply, relay_1: Relay, relay_2: Relay, hall_sensor_pin: int = 0):
+    def __init__(self, ps: PowerSupply, relay_1: Relay, relay_2: Relay,
+                 hall_sensor_pin: int = 0):
         self.ps = ps
 
         self.hall_sensor_pin = hall_sensor_pin
@@ -35,25 +35,29 @@ class Demagnetizer:
 
         for i in range(Demagnetizer.TRIALS):
             if difference:
-                readings.append(self.adc.read_adc_difference(self.hall_sensor_pin, gain=Demagnetizer.GAIN))
+                readings.append(self.adc.read_adc_difference(
+                    self.hall_sensor_pin, gain=Demagnetizer.GAIN))
             else:
-                readings.append(self.adc.read_adc(self.hall_sensor_pin, gain=Demagnetizer.GAIN))
+                readings.append(self.adc.read_adc(self.hall_sensor_pin,
+                                                  gain=Demagnetizer.GAIN))
 
-        mean = statistics.mean(readings)
-        deviation = statistics.stdev(readings)
+        mean = stats.mean(readings)
+        deviation = stats.stdev(readings)
 
         # Remove outliers in readings to account for bouncing or interference
         upper_bound = mean + deviation
         lower_bound = mean - deviation
 
         # Filter outliers
-        filtered_readings = [reading for reading in readings if lower_bound < reading < upper_bound]
+        filt_readings = [reading for reading in readings if
+                         lower_bound < reading < upper_bound]
 
-        return int(statistics.mean(filtered_readings)) if len(filtered_readings) > 0 else -1
+        return int(stats.mean(filt_readings)) if len(filt_readings) > 0 else -1
 
     def get_field_average(self, trials: int) -> int:
         """
-        Takes an average of the outlier-omitted field readings over a specified number of trials
+        Takes an average of the outlier-omitted field readings over a specified
+        number of trials
         :param trials: Number of trials
         :return: Average of all trials
         """
@@ -61,7 +65,8 @@ class Demagnetizer:
         for i in range(trials):
             try:
                 value += self.get_field()
-            except:
+            except Exception as err:
+                print(err)
                 return -1
         return int(value / trials)
 
@@ -77,14 +82,16 @@ class Demagnetizer:
 
         return no_field
 
-    def demag_current(self, no_field: int, saturation_current: float = 1.5, demag_current: float = 0.05,
+    def demag_current(self, no_field: int, saturation_current: float = 1.5,
+                      demag_current: float = 0.05,
                       termination_threshold: float = 0.004):
         """
         Runs the demagnetization routine using current
         :param no_field: The initial no_field value
         :param saturation_current: Current value used to saturate solenoid
         :param demag_current: Current value used to demagnetize solenoid
-        :param termination_threshold: percent of no_field required acceptable as 0 field
+        :param termination_threshold: percent of no_field required
+        acceptable as 0 field
         """
         print("No Field Value: %f" % no_field)
 
@@ -109,7 +116,7 @@ class Demagnetizer:
             self.relay_2.vcc()
             time.sleep(0.1)
             self.ps.enable_output(relay_forward=None)
-            time.sleep(0.3)  # This allows for the delay of the ps to turn on before opening the circuit
+            time.sleep(0.3)  # Allows power-on delay before opening the circuit
             self.relay_2.gnd()
             self.ps.disable_output(disable_relay=False)
             time.sleep(0.5)  # Delay for inductance before field reading
@@ -118,8 +125,9 @@ class Demagnetizer:
 
             print('Present Field: %f' % present_field)
 
-            if abs(present_field - no_field) > termination_threshold * no_field and signnum(
-                    present_field - no_field) != original_sign:
+            if(abs(present_field - no_field) > termination_threshold *
+               no_field and signnum(present_field - no_field) !=
+               original_sign):
                 overshoot = True
                 break
 
@@ -136,8 +144,9 @@ class Demagnetizer:
 
                 present_field = self.get_field()
 
-                if abs(present_field - no_field) > termination_threshold * no_field and signnum(
-                        present_field - no_field) != original_sign:
+                if(abs(present_field - no_field) > termination_threshold *
+                   no_field and signnum(present_field - no_field) !=
+                   original_sign):
                     break
 
         time.sleep(1)

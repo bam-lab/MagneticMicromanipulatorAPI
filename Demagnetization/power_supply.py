@@ -5,10 +5,13 @@ import serial
 
 MIN_STEP_PERIOD = 0.1
 
+
 class PowerSupply():
 
     def __init__(self, comm_port):
-        self.serial_conn = serial.Serial(comm_port, baudrate=9600, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
+        self.serial_conn = serial.Serial(comm_port, baudrate=9600,
+                                         bytesize=serial.EIGHTBITS,
+                                         parity=serial.PARITY_NONE,
                                          stopbits=serial.STOPBITS_TWO)
 
         self.serial_conn.write(b'*IDN?\n')
@@ -56,7 +59,8 @@ class PowerSupply():
             raise ValueError('Duty Cycle must be between 0 and 1')
 
         if period < MIN_STEP_PERIOD:
-            raise ValueError('Period must be at least %d seconds' % MIN_STEP_PERIOD)
+            raise ValueError('Period must be at least %d seconds'
+                             % MIN_STEP_PERIOD)
 
         if amplitude < 0:
             raise ValueError('Amplitude must be positive')
@@ -67,12 +71,14 @@ class PowerSupply():
     def start_ramp_wave(self, amplitude, rise_time, steady_time, rest_time):
 
         if rise_time < MIN_STEP_PERIOD:
-            raise ValueError('Period must be at least %d seconds' % MIN_STEP_PERIOD)
+            raise ValueError('Period must be at least %d seconds' %
+                             MIN_STEP_PERIOD)
 
         if amplitude < 0:
             raise ValueError('Amplitude must be positive')
 
-        self.wave = _RampWave(self, amplitude, rise_time, steady_time, rest_time)
+        self.wave = _RampWave(self, amplitude, rise_time, steady_time,
+                              rest_time)
         self.wave.start()
 
     def stop_wave(self):
@@ -86,7 +92,8 @@ class PowerSupply():
 
 class _SquareWave(threading.Thread):
 
-    def __init__(self, power_supply: PowerSupply, amplitude: float, period: float, duty_cycle: float):
+    def __init__(self, power_supply: PowerSupply, amplitude: float,
+                 period: float, duty_cycle: float):
         self.power_supply = power_supply
         self.amplitude = amplitude
 
@@ -116,7 +123,8 @@ class _SquareWave(threading.Thread):
 class _RampWave(threading.Thread):
 
     # Total period is rise_time + steady_time + rest_time
-    def __init__(self, power_supply: PowerSupply, amplitude: float, rise_time: float, steady_time: float, rest_time:float):
+    def __init__(self, power_supply: PowerSupply, amplitude: float,
+                 rise_time: float, steady_time: float, rest_time: float):
         self.power_supply = power_supply
         self.amplitude = amplitude
 

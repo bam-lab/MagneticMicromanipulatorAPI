@@ -1,5 +1,4 @@
-import time
-from getField import *
+from getField import getField, getFieldAvg
 
 print(getField())
 

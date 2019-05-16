@@ -17,24 +17,33 @@ aeval = Interpreter(syms)
 
 _CONTINUOUS_STEPS = 1000
 
-def visualize_wave(equation_str: str, variable: str, var_range: Tuple[float, float], discretization_step: float = None,
+
+def visualize_wave(equation_str: str,
+                   variable: str,
+                   var_range: Tuple[float, float],
+                   discretization_step: float = None,
                    wave_title: str = None):
     """
-    Displays a plot for visualizing a continuous function over a small period of time. Optionally can display
-    discretization as an overlayed plot
+    Displays a plot for visualizing a continuous function over a
+    small period of time. Optionally can display discretization as
+    an overlayed plot
 
     :param equation_str: String representing equation
     :param variable:  String representing single variable
     :param var_range:  Range of function to plot
     :param discretization_step: Optionally display discretization steps
-    :param wave_title: Optionally change the title of the plot. Default is equation_str
+    :param wave_title: Optionally change the title of the plot. Default
+    is equation_str
     """
 
     if wave_title is None:
         wave_title = 'Visualization of %s' % equation_str
 
     # Continuous first
-    aeval.symtable[variable] = np.arange(var_range[0], var_range[1], (var_range[1]-var_range[0])/_CONTINUOUS_STEPS)
+    aeval.symtable[variable] = np.arange(
+        var_range[0],
+        var_range[1],
+        (var_range[1] - var_range[0]) / _CONTINUOUS_STEPS)
     cont_var = aeval.symtable[variable]
     aeval('cont_func = %s' % equation_str)
     cont_func = aeval.symtable['cont_func']
@@ -46,7 +55,8 @@ def visualize_wave(equation_str: str, variable: str, var_range: Tuple[float, flo
 
     if discretization_step is not None:
         # Discrete next
-        aeval.symtable[variable] = np.arange(var_range[0], var_range[1], discretization_step)
+        aeval.symtable[variable] = np.arange(var_range[0], var_range[1],
+                                             discretization_step)
         disc_var = aeval.symtable[variable]
         aeval('disc_func = %s' % equation_str)
         disc_func = aeval.symtable['disc_func']

@@ -1,5 +1,4 @@
 from typing import Tuple, List
-
 from asteval import Interpreter
 
 aeval = Interpreter()
@@ -15,23 +14,29 @@ def step(x):
     :param x:
     :return:
     \"\"\"
-    
+
     return int(x >= 0)
 """)
 
-def parse_equation(equation_str: str, variable: str, var_range: Tuple[float, float], var_step: float) -> List[
-    Tuple[float, float]]:
-    """
-    Transforms a continuous single variable equation string into a list of discrete values.
-    For supported operations see http://newville.github.io/asteval/basics.html#built-in-functions
 
-    Also supports step(x) for Heaviside step function. (Useful if a piecewise function is needed)
+def parse_equation(equation_str: str, variable: str,
+                   var_range: Tuple[float, float],
+                   var_step: float) -> List[Tuple[float, float]]:
+    """
+    Transforms a continuous single variable equation string into a list
+    of discrete values.
+    For supported operations see
+    http://newville.github.io/asteval/basics.html#built-in-functions
+
+    Also supports step(x) for Heaviside step function. (Useful if a
+    piecewise function is needed)
 
     :param equation_str: String that contains variable and operators
     :param variable: String that represents the variable
     :param var_range: start <= variable < end
     :param var_step: Discretization increment for variable
-    :returns: A list of tuples representing the (variable, equation_str(variable)) pairs within the range
+    :returns: A list of tuples representing the
+    (variable, equation_str(variable)) pairs within the range
     """
 
     aeval.symtable['start'] = var_range[0]
@@ -40,15 +45,13 @@ def parse_equation(equation_str: str, variable: str, var_range: Tuple[float, flo
     aeval.symtable['step'] = var_step
     aeval.symtable[variable] = aeval.symtable['start']
 
-
     aeval(
-"""
-while %(variable)s < end:
-    computed_values.append((%(variable)s, %(expression)s))
-    %(variable)s += step
-"""
+        """
+        while %(variable)s < end:
+        computed_values.append((%(variable)s, %(expression)s))
+        %(variable)s += step
+        """
         % {'variable': variable, 'expression': equation_str}
     )
-
 
     return aeval.symtable['computed_values']
